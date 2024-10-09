@@ -40,7 +40,7 @@ jobs:
         path: .
 
     - name: Deploy to Server
-      uses: appleboy/ssh-action@master
+      uses: appleboy/ssh-action@v1.0.3
       with:
         host: ${{ env.SERVER_HOST }}
         username: ${{ env.SERVER_USERNAME }}
