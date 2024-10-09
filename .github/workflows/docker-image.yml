@@ -35,9 +35,9 @@ jobs:
     - name: Deploy to Server
       uses: appleboy/ssh-action@master
       with:
-        host: ${{ env.SERVER_HOST }}
-        username: ${{ env.SERVER_USERNAME }}
-        password: ${{ env.SERVER_PASSWORD }}
+        host: 192.168.154.140
+        username: root
+        password: 123456
         port: 22
         envs: SERVER_HOST,SERVER_USERNAME,SERVER_PASSWORD
         script: |
