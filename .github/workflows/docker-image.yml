@@ -1,17 +1,69 @@
-name: Test Connectivity
+name: Deploy Web App
 
 on:
-  workflow_dispatch:  # 允许手动触发工作流
+  push:
+    branches: [ main ]  # 触发条件：当代码推送到 main 分支时
+  pull_request:
+    branches: [ main ]  # 触发条件：当有拉取请求合并到 main 分支时
 
 env:
   SERVER_HOST: ${{ secrets.SERVER_HOST }}
+  SERVER_USERNAME: ${{ secrets.SERVER_USERNAME }}
+  SERVER_PASSWORD: ${{ secrets.SERVER_PASSWORD }}
 
 jobs:
-  test_connectivity:
+  build-and-deploy:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Check Network Connectivity
+    - name: Checkout Repository
+      uses: actions/checkout@v3
+
+    - name: Build Docker Image
       run: |
-        # 使用 curl 检查 HTTP 连接
-        curl -Is http://${SERVER_HOST} | head -1
+        docker build -t web-app .
+    
+    - name: Export Docker Image
+      run: |
+        docker save -o web-app.tar web-app
+
+    - name: Upload Docker Image Tarball
+      uses: actions/upload-artifact@v3
+      with:
+        name: web-app-tar
+        path: web-app.tar
+
+    - name: Download Artifact
+      uses: actions/download-artifact@v3
+      with:
+        name: web-app-tar
+        path: ./web-app.tar
+
+    - name: Deploy to Server
+      uses: appleboy/ssh-action@master
+      with:
+        host: ${{ env.SERVER_HOST }}
+        username: ${{ env.SERVER_USERNAME }}
+        password: ${{ env.SERVER_PASSWORD }}
+        port: 22
+        timeout: 60s
+        envs: SERVER_HOST,SERVER_USERNAME,SERVER_PASSWORD
+        script: |
+          # 创建一个目录来存放 tarball 文件
+          mkdir -p /tmp/web-app-tar
+          # 复制 tarball 文件到远程服务器
+          scp -P 22 -r ./web-app.tar.tar.gz ${SERVER_USERNAME}@${SERVER_HOST}:/tmp/web-app-tar/
+          # 进入 tarball 文件所在的目录
+          cd /tmp/web-app-tar
+          # 解压 tarball 文件
+          tar -xzf web-app.tar.tar.gz
+          # 加载 Docker 镜像
+          docker load < web-app.tar
+          # 停止现有容器
+          docker stop web-app || true
+          # 删除现有容器
+          docker rm web-app || true
+          # 删除悬挂的镜像
+          docker rmi $(docker images -f "dangling=true" -q) || true
+          # 运行新的容器
+          docker run -d --name web-app -p 8000:8000 web-app
