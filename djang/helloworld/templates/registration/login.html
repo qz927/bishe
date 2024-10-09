@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <link href='/static/css/bookinfo.css' rel='stylesheet' type="text/css">
+</head>
+
+<body>
+<center>
+    <h1>Welcome to  movie ticket sales System</h1>
+    {% if form.errors %}
+    <p style="color:red">用户名或者密码有误，请重新登录！</p>
+    {% endif %}
+        <form method="POST" action="{% url 'login' %}" >
+        {% csrf_token %}
+        <table>
+        <tr><td align="right">用户名：</td><td>
+            <input type="text" name="username" value="{{username}}" /></td></tr>
+        <tr><td align="right">密码：</td><td>
+            <input type="password" name="password" value="{{password}}" /></td></tr>
+        </table>
+            <input type="submit" value="登录">
+            <input type="hidden" name="next" value="{{ next }}">
+
+
+        </form>
+    <span style="color:red">{{news}}</span>
+</center>
+</body>
+</html>

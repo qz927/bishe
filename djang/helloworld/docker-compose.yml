@@ -1,0 +1,10 @@
+services:
+    django:
+        image: django_app:example
+        build:
+            context: .
+            dockerfile: Dockerfile
+        ports:
+            - 8000:8000
+        volumes:
+            - ../helloworld:/root/app/

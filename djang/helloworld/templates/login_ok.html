@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport"
+    content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0,
+minimum-scale=1.0">
+<meta http-equiv="X-UA-Compatiblel" content="ie=edge">
+<title>Index</title>
+</head>
+<body>
+<div style="width: 60%;margin-left:200px;">
+<button><a href="/add/">添加</a></button>
+    <table style="width: 100%">
+    <tr>
+    <th style="border: red 1px solid">ID</th>
+    <th style="border: red 1px solid">电影名</th>
+    <th style="border: red 1px solid">导演</th>
+    <th style="border: red 1px solid">票价</th>
+        <th style="border: red 1px solid">编辑</th>
+<th style="border:red 1px solid">删除</th>
+</tr>
+    {% for book in books %}
+        <tr>
+            <td style="border: red 1px solid">{{ book.id }}</td>
+            <td style="border:red 1px solid">{{ book.name }}</td>
+            <td style="border:red 1px solid">{{ book.author }}</td>
+            <td style="border:red 1px solid">{{ book.price }}</td>
+            <td style="border:red 1px solid"><button><a href="/edit/?id={{ book.id }}">
+编辑</a></button></td>
+    <td style="border: red 1px solid"><button><a href="/delete/?id={{ book.id }}">
+删除</a></button></td>
+    </tr>
+    {% endfor %}
+</table>
+</div>
+</body>
+</html>
