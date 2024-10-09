@@ -1,4 +1,4 @@
-name: Docker Build and Deploy
+name: Deploy Web App
 
 on:
   push:
@@ -7,8 +7,9 @@ on:
     branches: [ main ]  # 触发条件：当有拉取请求合并到 main 分支时
 
 env:
-  DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
-  DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+  SERVER_HOST: ${{ secrets.SERVER_HOST }}
+  SERVER_USERNAME: ${{ secrets.SERVER_USERNAME }}
+  SERVER_PASSWORD: ${{ secrets.SERVER_PASSWORD }}
 
 jobs:
   build-and-deploy:
@@ -18,28 +19,38 @@ jobs:
     - name: Checkout Repository
       uses: actions/checkout@v3
 
-    - name: Login to Docker Hub
-      run: echo $DOCKER_PASSWORD | docker login -u $DOCKER_USERNAME --password-stdin
-
     - name: Build Docker Image
-      run: docker build -t qz927/my-app .
+      run: |
+        docker build -t web-app .
+    
+    - name: Export Docker Image
+      run: |
+        docker save -o web-app.tar web-app
 
-    - name: Tag Docker Image
-      run: docker tag qz927/my-app qz927/my-app:latest
-
-    - name: Push Docker Image to Docker Hub
-      run: docker push qz927/my-app:latest
+    - name: Upload Docker Image Tarball
+      uses: actions/upload-artifact@v3
+      with:
+        name: web-app-tar
+        path: web-app.tar
 
     - name: Deploy to Server
       uses: appleboy/ssh-action@master
       with:
-        host: ${{ secrets.HOST }}
-        username: ${{ secrets.USERNAME }}
-        password: ${{ secrets.PASSWORD }}
-        port: ${{ secrets.PORT }}
+        host: ${{ env.SERVER_HOST }}
+        username: ${{ env.SERVER_USERNAME }}
+        password: ${{ env.SERVER_PASSWORD }}
+        port: 22
+        envs: SERVER_HOST,SERVER_USERNAME,SERVER_PASSWORD
         script: |
-          docker stop $(docker ps -a -q -f name=my-app)
-          docker rm $(docker ps -a -q -f name=my-app)
-          docker rmi $(docker images -q -f dangling=true)
-          docker pull qz927/my-app:latest
-          docker run -d --name my-app -p 8080:5000 qz927/my-app:latest
+          # 下载 Docker 镜像 tarball
+          wget https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts/web-app-tar/web-app.tar
+          # 加载 Docker 镜像
+          docker load < web-app.tar
+          # 停止现有容器
+          docker stop web-app || true
+          # 删除现有容器
+          docker rm web-app || true
+          # 删除悬挂的镜像
+          docker rmi $(docker images -f "dangling=true" -q) || true
+          # 运行新的容器
+          docker run -d --name web-app -p 8080:5000 web-app
