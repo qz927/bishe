@@ -1,10 +1,10 @@
-name: Deploy Web App
+name: Deploy to Virtual Machine
 
 on:
   push:
-    branches: [ main ]  # 触发条件：当代码推送到 main 分支时
+    branches: [ main ]  # 当推送到 main 分支时触发
   pull_request:
-    branches: [ main ]  # 触发条件：当有拉取请求合并到 main 分支时
+    branches: [ main ]  # 当有拉取请求合并到 main 分支时触发
 
 env:
   SERVER_HOST: ${{ secrets.SERVER_HOST }}
@@ -12,45 +12,27 @@ env:
   SERVER_PASSWORD: ${{ secrets.SERVER_PASSWORD }}
 
 jobs:
-  build-and-deploy:
+  deploy:
     runs-on: ubuntu-latest
 
     steps:
     - name: Checkout Repository
       uses: actions/checkout@v3
 
-    - name: Build Docker Image
-      run: |
-        docker build -t web-app .
-    
-    - name: Export Docker Image
-      run: |
-        docker save -o web-app.tar web-app
-
-    - name: Upload Docker Image Tarball
-      uses: actions/upload-artifact@v3
-      with:
-        name: web-app-tar
-        path: web-app.tar
-
-    - name: Deploy to Server
+    - name: Deploy to VM via SSH
       uses: appleboy/ssh-action@master
       with:
         host: ${{ env.SERVER_HOST }}
         username: ${{ env.SERVER_USERNAME }}
         password: ${{ env.SERVER_PASSWORD }}
         port: 22
-        envs: SERVER_HOST,SERVER_USERNAME,SERVER_PASSWORD
         script: |
-          # 下载 Docker 镜像 tarball
-          wget https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts/web-app-tar/web-app.tar
-          # 加载 Docker 镜像
-          docker load < web-app.tar
-          # 停止现有容器
-          docker stop web-app || true
-          # 删除现有容器
-          docker rm web-app || true
-          # 删除悬挂的镜像
-          docker rmi $(docker images -f "dangling=true" -q) || true
-          # 运行新的容器
-          docker run -d --name web-app -p 8000:8000 web-app
+          # 在这里编写你想在虚拟机上执行的命令
+          # 例如：更新包管理器
+          sudo apt-get update
+          # 安装特定软件包
+          sudo apt-get install -y nginx
+          # 启动 web 服务器
+          sudo systemctl start nginx
+          # 检查 web 服务器状态
+          sudo systemctl status nginx
