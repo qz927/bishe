@@ -1,38 +1,17 @@
-name: Deploy to Virtual Machine
+name: Test Connectivity
 
 on:
-  push:
-    branches: [ main ]  # 当推送到 main 分支时触发
-  pull_request:
-    branches: [ main ]  # 当有拉取请求合并到 main 分支时触发
+  workflow_dispatch:  # 允许手动触发工作流
 
 env:
   SERVER_HOST: ${{ secrets.SERVER_HOST }}
-  SERVER_USERNAME: ${{ secrets.SERVER_USERNAME }}
-  SERVER_PASSWORD: ${{ secrets.SERVER_PASSWORD }}
 
 jobs:
-  deploy:
+  test_connectivity:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout Repository
-      uses: actions/checkout@v3
-
-    - name: Deploy to VM via SSH
-      uses: appleboy/ssh-action@master
-      with:
-        host: ${{ env.SERVER_HOST }}
-        username: ${{ env.SERVER_USERNAME }}
-        password: ${{ env.SERVER_PASSWORD }}
-        port: 22
-        script: |
-          # 在这里编写你想在虚拟机上执行的命令
-          # 例如：更新包管理器
-          sudo apt-get update
-          # 安装特定软件包
-          sudo apt-get install -y nginx
-          # 启动 web 服务器
-          sudo systemctl start nginx
-          # 检查 web 服务器状态
-          sudo systemctl status nginx
+    - name: Check Network Connectivity
+      run: |
+        # 使用 curl 检查 HTTP 连接
+        curl -Is http://${SERVER_HOST} | head -1
