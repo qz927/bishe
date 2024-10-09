@@ -1,10 +1,10 @@
-name: Deploy Web App
+name: Deploy Django Project with SSH Password
 
 on:
   push:
-    branches: [ main ]  # 触发条件：当代码推送到 main 分支时
+    branches: [ main ]  # 当代码推送到 main 分支时触发
   pull_request:
-    branches: [ main ]  # 触发条件：当有拉取请求合并到 main 分支时
+    branches: [ main ]  # 当有拉取请求合并到 main 分支时触发
 
 env:
   SERVER_HOST: ${{ secrets.SERVER_HOST }}
@@ -21,30 +21,40 @@ jobs:
 
     - name: Build Docker Image
       run: |
-        docker build -t web-app .
+        docker build -t django-web-app .
     
-    - name: Export Docker Image
+    - name: Export Docker Image as Tarball
       run: |
-        docker save -o web-app.tar web-app
-    - name: Upload Docker Image Tarball
+        docker save -o web-app.tar django-web-app
+
+    - name: Upload Docker Image Tarball as Artifact
       uses: actions/upload-artifact@v3
       with:
         name: web-app-tar
         path: web-app.tar
 
+    - name: Download Docker Image Tarball from Artifact
+      uses: actions/download-artifact@v3
+      with:
+        name: web-app-tar
+        path: .
+
     - name: Deploy to Server
       uses: appleboy/ssh-action@master
       with:
-        host: 192.168.154.140
-        username: root
-        password: 123456
+        host: ${{ env.SERVER_HOST }}
+        username: ${{ env.SERVER_USERNAME }}
+        password: ${{ env.SERVER_PASSWORD }}
         port: 22
+        timeout: 60
         envs: SERVER_HOST,SERVER_USERNAME,SERVER_PASSWORD
         script: |
-          # 下载 Docker 镜像 tarball
-          wget https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts/web-app-tar/web-app.tar
+          # 创建存储目录
+          mkdir -p /opt/web-app
+          # 复制 tarball 到远程服务器
+          scp -P 22 -i /path/to/private/key web-app.tar ${SERVER_USERNAME}@${SERVER_HOST}:/opt/web-app/web-app.tar
           # 加载 Docker 镜像
-          docker load < web-app.tar
+          docker load -i /opt/web-app/web-app.tar
           # 停止现有容器
           docker stop web-app || true
           # 删除现有容器
@@ -52,4 +62,4 @@ jobs:
           # 删除悬挂的镜像
           docker rmi $(docker images -f "dangling=true" -q) || true
           # 运行新的容器
-          docker run -d --name web-app -p 8000:8000 web-app
+          docker run -d --name web-app -p 8000:8000 django-web-app
