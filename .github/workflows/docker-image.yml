@@ -1,0 +1,56 @@
+name: Deploy Web App
+
+on:
+  push:
+    branches: [ main ]  # 触发条件：当代码推送到 main 分支时
+  pull_request:
+    branches: [ main ]  # 触发条件：当有拉取请求合并到 main 分支时
+
+env:
+  SERVER_HOST: ${{ secrets.SERVER_HOST }}
+  SERVER_USERNAME: ${{ secrets.SERVER_USERNAME }}
+  SERVER_PASSWORD: ${{ secrets.SERVER_PASSWORD }}
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v3
+
+    - name: Build Docker Image
+      run: |
+        docker build -t web-app .
+    
+    - name: Export Docker Image
+      run: |
+        docker save -o web-app.tar web-app
+
+    - name: Upload Docker Image Tarball
+      uses: actions/upload-artifact@v3
+      with:
+        name: web-app-tar
+        path: web-app.tar
+
+    - name: Deploy to Server
+      uses: appleboy/ssh-action@master
+      with:
+        host: ${{ env.SERVER_HOST }}
+        username: ${{ env.SERVER_USERNAME }}
+        password: ${{ env.SERVER_PASSWORD }}
+        port: 22
+        envs: SERVER_HOST,SERVER_USERNAME,SERVER_PASSWORD
+        script: |
+          # 下载 Docker 镜像 tarball
+          wget https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts/web-app-tar/web-app.tar
+          # 加载 Docker 镜像
+          docker load < web-app.tar
+          # 停止现有容器
+          docker stop web-app || true
+          # 删除现有容器
+          docker rm web-app || true
+          # 删除悬挂的镜像
+          docker rmi $(docker images -f "dangling=true" -q) || true
+          # 运行新的容器
+          docker run -d --name web-app -p 8080:5000 web-app
