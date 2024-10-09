@@ -1,18 +1,45 @@
-name: Docker Image CI
+name: Docker Build and Deploy
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ main ]  # 触发条件：当代码推送到 main 分支时
   pull_request:
-    branches: [ "main" ]
+    branches: [ main ]  # 触发条件：当有拉取请求合并到 main 分支时
+
+env:
+  DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+  DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
 
 jobs:
-
-  build:
-
+  build-and-deploy:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v4
-    - name: Build the Docker image
-      run: docker build . --file Dockerfile --tag my-image-name:$(date +%s)
+    - name: Checkout Repository
+      uses: actions/checkout@v3
+
+    - name: Login to Docker Hub
+      run: echo $DOCKER_PASSWORD | docker login -u $DOCKER_USERNAME --password-stdin
+
+    - name: Build Docker Image
+      run: docker build -t qz927/my-app .
+
+    - name: Tag Docker Image
+      run: docker tag qz927/my-app qz927/my-app:latest
+
+    - name: Push Docker Image to Docker Hub
+      run: docker push qz927/my-app:latest
+
+    - name: Deploy to Server
+      uses: appleboy/ssh-action@master
+      with:
+        host: ${{ secrets.HOST }}
+        username: ${{ secrets.USERNAME }}
+        password: ${{ secrets.PASSWORD }}
+        port: ${{ secrets.PORT }}
+        script: |
+          docker stop $(docker ps -a -q -f name=my-app)
+          docker rm $(docker ps -a -q -f name=my-app)
+          docker rmi $(docker images -q -f dangling=true)
+          docker pull qz927/my-app:latest
+          docker run -d --name my-app -p 8080:5000 qz927/my-app:latest
