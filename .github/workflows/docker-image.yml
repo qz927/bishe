@@ -53,4 +53,4 @@ jobs:
           # 删除悬挂的镜像
           docker rmi $(docker images -f "dangling=true" -q) || true
           # 运行新的容器
-          docker run -d --name web-app -p 8080:5000 web-app
+          docker run -d --name web-app -p 8000:8000 web-app
