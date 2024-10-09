@@ -26,18 +26,11 @@ jobs:
     - name: Export Docker Image
       run: |
         docker save -o web-app.tar web-app
-
     - name: Upload Docker Image Tarball
       uses: actions/upload-artifact@v3
       with:
         name: web-app-tar
         path: web-app.tar
-
-    - name: Download Artifact
-      uses: actions/download-artifact@v3
-      with:
-        name: web-app-tar
-        path: ./web-app.tar
 
     - name: Deploy to Server
       uses: appleboy/ssh-action@master
@@ -46,17 +39,10 @@ jobs:
         username: ${{ env.SERVER_USERNAME }}
         password: ${{ env.SERVER_PASSWORD }}
         port: 22
-        timeout: 60s
         envs: SERVER_HOST,SERVER_USERNAME,SERVER_PASSWORD
         script: |
-          # 创建一个目录来存放 tarball 文件
-          mkdir -p /tmp/web-app-tar
-          # 复制 tarball 文件到远程服务器
-          scp -P 22 -r ./web-app.tar.tar.gz ${SERVER_USERNAME}@${SERVER_HOST}:/tmp/web-app-tar/
-          # 进入 tarball 文件所在的目录
-          cd /tmp/web-app-tar
-          # 解压 tarball 文件
-          tar -xzf web-app.tar.tar.gz
+          # 下载 Docker 镜像 tarball
+          wget https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts/web-app-tar/web-app.tar
           # 加载 Docker 镜像
           docker load < web-app.tar
           # 停止现有容器
